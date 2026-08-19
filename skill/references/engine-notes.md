@@ -105,6 +105,12 @@ flight. Turning a tool call into a line:
 `pet privacy on` replaces the title with "Working" and subtitles with generic phrases, for
 when nothing from a prompt should be written to disk at all.
 
+**The card is hover-gated.** It is up while the cursor is over the pet and for
+`CARD_LINGER_MS` after `leaveEvent`, and otherwise not at all. Two traps: keying it on
+state instead (`running`/`needs_input`/`blocked`) pins it up for whole turns, and re-arming
+the linger from `reload()` amounts to the same thing, because the subtitle changes on every
+tool call. Only `leaveEvent` arms it.
+
 ## Jumping to a session (herdr)
 
 Sessions on this machine do not live in a terminal window. They are panes inside

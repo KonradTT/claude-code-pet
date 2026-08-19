@@ -383,12 +383,16 @@ class Pet(QWidget):
         return title, sub
 
     def showing_card(self) -> bool:
-        """Up while there is work in flight, and briefly after it finishes."""
+        """Up while you are looking at him, and briefly after you look away.
+
+        Work in flight is not enough on its own: a card pinned up for the whole
+        of a long turn is clutter, and the animation already says he is busy.
+        """
         if self.expanded:
             return True
-        if self.state in ("running", "needs_input", "blocked"):
-            return True
-        return bool(self.title or self.subtitle) and self.tick < self.card_until
+        if not (self.title or self.subtitle):
+            return False
+        return self.hovered or self.tick < self.card_until
 
     def card_rect(self) -> QRect:
         if self.expanded:
@@ -525,6 +529,7 @@ class Pet(QWidget):
     def leaveEvent(self, event) -> None:  # noqa: N802
         if self.hovered:
             self.hovered = False
+            self.card_until = self.tick + CARD_LINGER_MS   # long enough to read
             if self.oneshot in ("jump", "wave"):
                 self.oneshot = None
             self.apply_mask()
@@ -735,8 +740,7 @@ class Pet(QWidget):
             new_sub = str(data.get("subtitle") or "")[:160]
             if (new_title, new_sub) != (self.title, self.subtitle) or force:
                 self.title, self.subtitle = new_title, new_sub
-                self.card_until = self.tick + CARD_LINGER_MS
-                self._mask_cache = None
+                self._mask_cache = None       # a new line is a new card width
             self.sessions = int(data.get("sessions", 0) or 0)
             tasks = data.get("tasks")
             new_tasks = tasks if isinstance(tasks, dict) else {}

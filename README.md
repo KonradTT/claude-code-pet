@@ -11,9 +11,10 @@ through to any of them.
 
 ## What it does
 
-- **Relays the work.** A task card under the pet shows the prompt as a title and the tool
-  call in flight as a subtitle — "Editing `pet_overlay.py`", "Running the test suite",
-  "Done".
+- **Relays the work.** Hover the pet and a task card shows the prompt as a title and the
+  tool call in flight as a subtitle — "Editing `pet_overlay.py`", "Running the test
+  suite", "Done". It stays up for five seconds after your mouse leaves, then gets out of
+  the way; the pet's animation is what tells you he is busy the rest of the time.
 - **Reacts.** `think` while Claude works, `shrug` when it wants permission, `celebrate`
   when a turn finishes, `angry` on error.
 - **Counts parallel sessions.** Hover it for a badge with the number of live Claude
