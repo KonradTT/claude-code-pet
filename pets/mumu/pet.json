@@ -1,0 +1,79 @@
+{
+  "id": "mumu",
+  "displayName": "Mumu",
+  "description": "A worried bronze robot with a glowing green brain dome.",
+  "source": "codex:copper-dome-bot",
+  "cell": [
+    192,
+    208
+  ],
+  "baseline": 202,
+  "animations": {
+    "idle": {
+      "file": "frames/idle.png",
+      "frames": 7,
+      "ms": 190,
+      "loop": true
+    },
+    "walk_right": {
+      "file": "frames/walk_right.png",
+      "frames": 8,
+      "ms": 95,
+      "loop": true
+    },
+    "walk_left": {
+      "file": "frames/walk_left.png",
+      "frames": 8,
+      "ms": 95,
+      "loop": true
+    },
+    "wave": {
+      "file": "frames/wave.png",
+      "frames": 4,
+      "ms": 150,
+      "loop": true
+    },
+    "jump": {
+      "file": "frames/jump.png",
+      "frames": 5,
+      "ms": 90,
+      "loop": false
+    },
+    "celebrate": {
+      "file": "frames/celebrate.png",
+      "frames": 8,
+      "ms": 110,
+      "loop": false
+    },
+    "shrug": {
+      "file": "frames/shrug.png",
+      "frames": 6,
+      "ms": 140,
+      "loop": true
+    },
+    "think": {
+      "file": "frames/think.png",
+      "frames": 6,
+      "ms": 160,
+      "loop": true
+    },
+    "angry": {
+      "file": "frames/angry.png",
+      "frames": 6,
+      "ms": 150,
+      "loop": true
+    },
+    "turn_out": {
+      "file": "frames/turn_out.png",
+      "frames": 8,
+      "ms": 55,
+      "loop": false
+    },
+    "turn_in": {
+      "file": "frames/turn_in.png",
+      "frames": 8,
+      "ms": 55,
+      "loop": false
+    }
+  }
+}

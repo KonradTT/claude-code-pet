@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Toggle and drive the Claude desktop pet.
+#
+#   pet             toggle him on or off
+#   pet on|off      force it
+#   pet auto        follow Claude Code sessions (default behaviour)
+#   pet center [n]  bring him to the middle of display n (see: pet screens)
+#   pet size 200    set his height in pixels
+#   pet wave        make him wave now (also: jump, celebrate, shrug, angry)
+#   pet sessions    list every live Claude session
+#   pet focus <id>  jump to that session's pane
+#   pet pets        list the pets in your library
+#   pet use <id>    switch to another pet
+#   pet animations  list every animation he has
+#   pet screens     list your displays
+#   pet status      what he is doing
+set -euo pipefail
+HERE="__ENGINE__"
+PY="$(dirname "$HERE")/.venv/bin/python"
+CTL="$HERE/petctl.py"
+
+# Start the overlay if it is not already up, otherwise nothing can appear.
+if ! pgrep -f "pet_overlay.py" >/dev/null 2>&1; then
+  nohup "$PY" "$HERE/pet_overlay.py" >/tmp/claude-pet.log 2>&1 &
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    [ -f "$HOME/.assistant-pet/runtime.json" ] && break
+    sleep 0.3
+  done
+fi
+
+# No arguments means toggle. Default the positional args, not just the case match,
+# or petctl is invoked with nothing at all.
+[ $# -eq 0 ] && set -- toggle
+
+case "$1" in
+  -h|--help|help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//' ;;
+  kill|quit)      pkill -f pet_overlay.py && echo "pet: stopped" ;;
+  *)              exec "$PY" "$CTL" "$@" ;;
+esac
