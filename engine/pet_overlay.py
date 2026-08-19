@@ -13,6 +13,8 @@ import sys
 import threading
 from pathlib import Path
 
+import sessions
+
 try:
     import herdr_link
 except ImportError:                       # the integration is optional
@@ -112,6 +114,8 @@ class Pet(QWidget):
         self.subtitle = ""
         self.tasks: dict = {}         # from Claude Code hooks
         self.herdr: dict = {}         # from herdr, adds pane ids and unseen sessions
+        self._live: dict | None = None  # Claude's own registry; None until first poll
+        self._sessions_dirty = False  # the poller ran; the GUI thread must redraw
         self._herdr_tick = 0
         self.rows: list = []          # (rect, session_id, entry) for hit testing
         self.expanded = False
@@ -272,11 +276,16 @@ class Pet(QWidget):
                     self.playing = self.desired_anim()
                     self.frame = 0
             self.update()
+        rows = len(self.session_list())
         furniture = (self.showing_card(), self.showing_controls(),
-                     self.expanded, len(self.tasks), len(self.herdr))
-        if furniture != self._furniture:
-            self._furniture = furniture
-            self.apply_mask()
+                     self.expanded, rows)
+        if furniture != self._furniture or self._sessions_dirty:
+            row_count_changed = self._furniture is None or rows != self._furniture[3]
+            self._furniture, self._sessions_dirty = furniture, False
+            if self.expanded and row_count_changed:
+                self.relayout()       # the panel is exactly as tall as the list
+            else:
+                self.apply_mask()
             self.update()
 
     # ------------------------------------------------------------ geometry --
@@ -352,38 +361,18 @@ class Pet(QWidget):
         return f
 
     def session_list(self) -> list[tuple[str, dict]]:
-        """Every live Claude session: herdr's panes plus hook-only ones.
-
-        herdr knows about sessions that started before the hooks existed and
-        carries the pane id needed to focus them; the hooks carry the richer
-        title and current step. Merge, preferring hook text.
-        """
-        merged: dict[str, dict] = {}
-        for sid, a in self.herdr.items():
-            merged[sid] = {"state": a["state"], "title": a["title"],
-                           "subtitle": "", "pane": a.get("pane_id"),
-                           "focused": a.get("focused", False)}
-        for sid, t in self.tasks.items():
-            e = merged.setdefault(sid, {"pane": None, "focused": False})
-            e["state"] = t.get("state", e.get("state", "idle"))
-            e["title"] = t.get("title") or e.get("title") or ""
-            e["subtitle"] = t.get("subtitle") or ""
-        # A hook-only session with no title has nothing to show and nowhere to
-        # go - drop it rather than pad the list with blanks.
-        rows = [(sid, e) for sid, e in merged.items()
-                if e.get("pane") or e.get("title") or e.get("subtitle")]
-        rows.sort(key=lambda kv: (not kv[1].get("pane"), kv[1].get("title", "")))
-        return rows[:MAX_ROWS]
+        return sessions.merge_rows(self.herdr, self.tasks, self._live, MAX_ROWS)
 
     def refresh_herdr(self) -> None:
-        """Poll herdr off the UI thread - it shells out and would stutter here."""
-        if herdr_link is None or not herdr_link.available():
-            return
+        """Poll herdr and the session registry off the UI thread - one shells
+        out and the other walks a directory, either would stutter here."""
         def work():
-            found = herdr_link.agents()
-            if found != self.herdr:
-                self.herdr = found
-                self._furniture = None
+            live = sessions.live()
+            found = (herdr_link.agents()
+                     if herdr_link is not None and herdr_link.available() else {})
+            if (found, live) != (self.herdr, self._live):
+                self.herdr, self._live = found, live
+                self._sessions_dirty = True
         threading.Thread(target=work, daemon=True).start()
 
     def card_lines(self) -> tuple[str, str]:

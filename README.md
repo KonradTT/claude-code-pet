@@ -127,6 +127,14 @@ Clicking a session row focuses it. How that works depends on where your sessions
 Background jobs are real Claude sessions but have no window anywhere, so they are shown
 dimmed and marked, rather than pretending to be reachable.
 
+**The list only holds sessions that are still running.** Lifecycle hooks cannot be relied
+on to announce the end of a session — closing a herdr tab, or anything else that kills the
+process, gives Claude Code no chance to fire `SessionEnd`. So the pet reconciles against
+Claude Code's own registry of running sessions (`~/.claude/sessions`) and drops what is
+gone. Where there is no such registry the pet falls back to the hook view, exactly as
+before. Sessions that have started but been given no work yet count towards the badge but
+draw no row, since there is nothing to put in one.
+
 ## Layout
 
 ```
@@ -134,9 +142,11 @@ engine/            the overlay, CLI, importer and hook wiring
   pet_overlay.py     the window: animation, task card, drag, resize, sessions
   petctl.py          CLI: hooks, states, size, pets, sessions, status
   hatch.py           import a spritesheet into the pet library; emit a brief
+  sessions.py        which sessions are alive, and the rows to draw for them
   herdr_link.py      optional: map Claude sessions to herdr panes
   merge_hooks.py     idempotent hook install/removal, with backup
   bin/pet            the `pet` command
+  tests/             unit tests; run ./run-tests.sh
 skill/             the hatch-pet skill, installed to ~/.claude/skills
 pets/mumu/         the reference pet: 11 animations, 74 frames
 ```

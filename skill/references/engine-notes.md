@@ -74,6 +74,25 @@ task: `needs_input > blocked > ready > running > idle`.
 exercised by testing and is where a `NameError` hid. Always test the full lifecycle down
 to zero sessions.
 
+**Hooks only ever add.** `SessionEnd` is the only thing that removes a task, and it does
+not run when a session is killed rather than closed — closing a herdr tab, or any
+`SIGKILL`, takes the process down with no chance to fire it. Left to itself the map grows
+without limit and the list never shrinks: the row does not vanish, it loses the pane and
+title herdr was supplying and falls through to the generic `"Working"` fallback, which
+reads as a phantom session.
+
+`sessions.py` fixes that by reconciling against Claude Code's own registry —
+`~/.claude/sessions/<pid>.json`, one file per running session, carrying `sessionId`,
+`pid` and a human `name`. A session id absent from it, whose pid is gone, is dead. Three
+rules keep that safe: an unreadable or missing registry means *cannot tell*, so nothing is
+reaped; ids that are not Claude-shaped UUIDs (`pet session start` invents `manual-<pid>`)
+are never candidates; and a hook never reaps the session it is currently writing for.
+
+A row must also **earn** its place: a paneless, unnamed, `idle` session has nothing to
+show. Judging that on the state rather than on the subtitle matters, because
+`SessionStart` used to write a placeholder `"Ready"` subtitle that gave every bare session
+a row for free.
+
 ## What goes on the card
 
 The title comes from the prompt and persists for the turn; the subtitle is the step in
@@ -115,6 +134,9 @@ have **no pane at all**. Show them, but do not pretend they are reachable.
   showed up mid-animation, and a mirrored-mask misalignment.
 - **Deliberately broken fixtures** — inject a wandering baseline and an opaque background,
   and assert the validator flags them. A validator that has never failed proves nothing.
+- **`SIGKILL` a real session** — the only honest test of reaping. A tab close may still let
+  `SessionEnd` run, so it cannot tell you whether the reaper works; `kill -9` proves no hook
+  fired, and the row must still go.
 - **Synthetic Qt events** — construct `QMouseEvent` press/release to test that a button
   toggles and that clicking the body still drags.
 - **Restore what you disturb.** Verifying focus meant actually moving the user's focused
