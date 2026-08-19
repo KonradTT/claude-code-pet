@@ -13,6 +13,9 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import sessions                                              # noqa: E402
+
 STATES = ("idle", "running", "needs_input", "ready", "blocked")
 DEFAULT_MSG = {
     "idle": "Waiting for a task", "running": "Working…",
@@ -154,7 +157,11 @@ def recompute(data: dict) -> dict:
 
 def update_task(home: Path, sid: str, state=None, title=None, subtitle=None,
                 remove: bool = False, source: str = "claude") -> None:
-    """One entry per live Claude session, so the pet can show how many are running."""
+    """One entry per live Claude session, so the pet can show how many are running.
+
+    Sessions that were killed rather than closed never got to run SessionEnd, so
+    every write is also an opportunity to reap the ones that are gone.
+    """
     sid = sid or "default"
     with locked(home):
         path = home / "state.json"
@@ -162,6 +169,7 @@ def update_task(home: Path, sid: str, state=None, title=None, subtitle=None,
         tasks = data.get("tasks")
         if not isinstance(tasks, dict):
             tasks = {}
+        tasks = sessions.prune(tasks, sessions.live(), keep={sid})
         if remove:
             tasks.pop(sid, None)
         else:
@@ -280,7 +288,9 @@ def main() -> int:
         inp = payload.get("tool_input", {})
         sid = str(payload.get("session_id") or "default")
         if event == "SessionStart":
-            update_task(home, sid, state="idle", title="", subtitle="Ready")
+            # No subtitle: a session that has been given no work yet has nothing
+            # to put in a row, and a placeholder would earn it one anyway.
+            update_task(home, sid, state="idle", title="", subtitle="")
         elif event == "SessionEnd":
             update_task(home, sid, remove=True)
         elif event == "UserPromptSubmit":
@@ -314,18 +324,14 @@ def main() -> int:
         except ImportError:
             herdr_link = None
         agents = herdr_link.agents() if herdr_link and herdr_link.available() else {}
-        tasks = read(home / "state.json").get("tasks") or {}
-        seen = set()
-        for sid, a in agents.items():
-            t2 = tasks.get(sid, {})
-            seen.add(sid)
-            print(f'  {"*" if a["focused"] else " "} {a["pane_id"]:8s} '
-                  f'{a["state"]:<11} {(t2.get("title") or a["title"])[:44]}')
-        for sid, t2 in tasks.items():
-            if sid not in seen:
-                print(f'    {"(no pane)":8s} {t2.get("state","idle"):<11} '
-                      f'{(t2.get("title") or "background job")[:44]}')
-        if not agents and not tasks:
+        # Exactly the rows the pet draws, so the two never disagree.
+        rows = sessions.merge_rows(agents, read(home / "state.json").get("tasks") or {},
+                                   sessions.live())
+        for _, e in rows:
+            print(f'  {"*" if e.get("focused") else " "} '
+                  f'{e.get("pane") or "(no pane)":9s} {e.get("state", "idle"):<11} '
+                  f'{(e.get("title") or "background job")[:44]}')
+        if not rows:
             print("  no live sessions")
         elif not agents:
             print("\n  herdr not available - sessions cannot be focused")
@@ -409,7 +415,7 @@ def main() -> int:
             return 2
         if args.value == "start":
             update_task(home, f"manual-{os.getpid()}", state="idle",
-                        subtitle="Ready", source=args.source)
+                        subtitle="", source=args.source)
         else:
             with locked(home):
                 path = home / "state.json"
