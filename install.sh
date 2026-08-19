@@ -71,6 +71,8 @@ echo "    ~/.claude/skills/hatch-pet"
 echo "==> pet command"
 mkdir -p "$HOME/.local/bin"
 # the wrapper needs to know where the engine lives
+# rm first: `>` onto an existing symlink writes through it and clobbers the target
+rm -f "$HOME/.local/bin/pet"
 sed "s|__ENGINE__|$ENGINE|" "$ENGINE/bin/pet" > "$HOME/.local/bin/pet"
 chmod +x "$HOME/.local/bin/pet"
 if command -v pet >/dev/null 2>&1; then
@@ -79,6 +81,7 @@ else
   echo "    WARNING: ~/.local/bin is not on your PATH - add it to your shell rc"
 fi
 mkdir -p "$HOME/.claude/commands"
+rm -f "$HOME/.claude/commands/pet.md"
 sed "s|__PET__|$HOME/.local/bin/pet|g" "$ENGINE/pet.md" > "$HOME/.claude/commands/pet.md"
 echo "    /pet slash command installed"
 
